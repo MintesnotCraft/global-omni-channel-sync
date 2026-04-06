@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+    <http:listener-config name="global-omni-channel-sync-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <apikit:config name="global-omni-channel-sync-config" api="resource::3d59ce7b-5af8-4da1-a91d-be36bfb4afca:global-omni-channel-sync:1.0.0:raml:zip:global-omni-channel-sync.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <file:config name="File_Config" doc:name="File Config" doc:id="7892c63d-e5e5-458d-9a4b-0d1d101787c5" >
+		<file:connection workingDir="C:\Users\craft\Videos\Regional-Updates" />
+	</file:config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="b78d4ca0-e63d-4da6-b463-96b7b62e169c" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="root" />
+	</db:config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="6a4186a0-5b11-423b-82e6-db7a196ef462" >
+		<salesforce:basic-connection username="craftmulesoft.a9e765d1bb95@agentforce.com" password="Gingerbread9@gingerbread" securityToken="uKGPkVZ2PffYWwA0PwcN2iowL"/>
+	</salesforce:sfdc-config>
+	<jms:config name="JMS_Config" doc:name="JMS Config" doc:id="27a65dc2-c562-4506-b89c-c835f6265fca" >
+		<jms:active-mq-connection username="admin" password="admin" >
+			<jms:factory-configuration brokerUrl="tcp://localhost:61616" />
+		</jms:active-mq-connection>
+	</jms:config>
+	<flow name="global-omni-channel-sync-main">
+        <http:listener config-ref="global-omni-channel-sync-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="global-omni-channel-sync-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="global-omni-channel-sync-console">
+        <http:listener config-ref="global-omni-channel-sync-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="global-omni-channel-sync-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\health:global-omni-channel-sync-config">
+        <os:retrieve doc:name="Retrieve" doc:id="3bf2b13e-d62b-434b-a99e-b99ac7f29022" key="healthStatus"/>
+		<ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="17557552-ded0-4c13-8dc1-08c6f2ab0691" type="OS:INVALID_KEY, OS:KEY_NOT_FOUND, OS:STORE_NOT_AVAILABLE">
+				<ee:transform doc:name="Transform Message" doc:id="752494d9-0f3b-4efd-b99d-dc399735812d" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  Database_State: "UNKNOWN STATE",
+  CheckedAt: now() as String {format:'yyyy-MM-dd-hh-mm-ss'}
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+    </flow>
+    <flow name="get:\inventory\(itemId):global-omni-channel-sync-config">
+        <ee:transform doc:name="Transform Message">
+            <ee:variables>
+                <ee:set-variable variableName="itemId">attributes.uriParams.'itemId'</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <salesforce:query doc:name="Query" doc:id="e925aa05-9b78-41fa-b07f-31717649d692" config-ref="Salesforce_Config" escapeSpecialCharactersForParametersValue="true">
+			<salesforce:salesforce-query ><![CDATA[SELECT itemId__c,lastUpdated__c,Name,regionalStock__c,region__c,status__c,totalInventory__c,warehouseStock__c FROM inventory__c where itemId__c = SELECT itemId__c,lastUpdated__c,Name,regionalStock__c,region__c,status__c,totalInventory__c,warehouseStock__c FROM inventory__c where itemId__c = :itemId]]></salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[{
+  "itemId": vars.itemId
+}]]]></salesforce:parameters>
+		</salesforce:query>
+		<ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="39d51ebb-0e94-4a43-a944-fb931a9d2e4e" type="SALESFORCE:CONNECTIVITY, SALESFORCE:INSUFFICIENT_PERMISSIONS, SALESFORCE:INVALID_RESPONSE, SALESFORCE:LIMIT_EXCEEDED">
+				<ee:transform doc:name="Transform Message" doc:id="7a8e5ee8-f38a-4cce-b159-959bb086e298" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message": "Sorry our salesforce is down. Try again later!"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+    </flow>
+    <flow name="post:\inventory\sync:application\json:global-omni-channel-sync-config">
+        <file:listener doc:name="On New or Updated File" doc:id="a474efcd-36fa-440e-b6b5-3897ee92c5dc" directory="C:\Users\craft\Videos\Regional-Updates" watermarkMode="MODIFIED_TIMESTAMP">
+			<scheduling-strategy >
+				<fixed-frequency />
+			</scheduling-strategy>
+		</file:listener>
+		<set-variable value="#[attributes.path]" doc:name="Set Variable" doc:id="88c886f9-913d-49f0-9ce1-96fcadeaf296" variableName="sourcePath"/>
+		<logger level="INFO" doc:name="Logger" doc:id="76b3b307-14cc-4df4-a0ce-b73e9b33b44e" message="#['CSV file received: ' ++ attributes.fileName]"/>
+		<file:read doc:name="Read" doc:id="d947d0af-3a1b-4202-ab24-57ef3a10db64" path="#[attributes.fileName]" config-ref="File_Config" outputMimeType="application/csv"/>
+		<ee:transform doc:name="Transform Message" doc:id="996339f6-a090-4322-9116-b7b2a07aa6d8" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map (value, index) -> {
+    itemId: value.itemId default "",
+    itemName: value.itemName default "",
+    regionalStock: value.regionalStock as Number default 0,
+    region: value.region default "GLOBAL",
+    lastUpdated: value.lastUpdated as DateTime default now()
+}
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="b916b8bd-e395-43dd-b0ad-74285aa84462" message="#[payload]"/>
+		<batch:job jobName="global-omni-channel-syncBatch_Job" doc:id="fcc46427-659c-4b4a-9cb0-1fa3fad2438e" >
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="f7da045d-7c53-4452-aff9-d8b1fe619fbf" >
+					<set-variable value="#[payload]" doc:name="Set Variable" doc:id="56683742-f7ea-4652-a9b2-3354957601ee" variableName="items"/>
+					<db:select doc:name="Select" doc:id="a3836249-5051-4b40-b9d6-ec75d29b7907" config-ref="Database_Config">
+						<db:sql ><![CDATA[SELECT * FROM mulemart.warehouse_inventory where item_id=:item_id;]]></db:sql>
+						<db:input-parameters ><![CDATA[#[{
+	item_id: payload.itemId
+}]]]></db:input-parameters>
+					</db:select>
+					<set-variable value="#[payload]" doc:name="Set Variable" doc:id="dee50902-dde3-47ba-a3d7-76349a6644fc" variableName="dbWarehouse"/>
+					<ee:transform doc:name="Transform Message" doc:id="2a655db4-f050-45cf-8598-3f1f4ff73288" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+    itemId: vars.items.itemId,
+    itemName: vars.items.itemName,
+    warehouseStock: vars.dbWarehouse[0].warehouse_stock default 0,
+    regionalStock: vars.items.regionalStock,
+    totalInventory: (vars.dbWarehouse[0].warehouse_stock default 0) + (vars.items.regionalStock default 0),
+    status: if ((vars.dbWarehouse[0].warehouse_stock default 0) + (vars.items.regionalStock default 0) > 100) "NORMAL"
+            else if ((vars.dbWarehouse[0].warehouse_stock default 0) + (vars.items.regionalStock default 0) < 10) "CRITICAL_LOW_STOCK"
+            else "LOW_STOCK",
+    region: vars.items.region,
+    lastUpdated: vars.items.lastUpdated
+}
+]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<set-variable value="#[payload]" doc:name="Set Variable" doc:id="77a71e51-a514-4f38-898c-3d03be76b32f" variableName="finalData"/>
+					<choice doc:name="Choice" doc:id="44dd6c3d-a2be-4d48-addc-bfc235ccd46c" >
+						<when expression="#[payload.totalInventory &lt; 10 or payload.totalInventory&lt;=vars.dbWarehouse[0].safety_stock_threshold]">
+							<ee:transform doc:name="Transform Message" doc:id="c8c455d4-2d88-459d-b5fb-73efb46543f4">
+								<ee:message>
+									<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+[{
+    itemId__c: payload.itemId,
+    Name: payload.itemName,
+    warehouseStock__c: payload.warehouseStock,
+    regionalStock__c: payload.regionalStock,
+    totalInventory__c: payload.totalInventory,
+    status__c: payload.status,
+    region__c: payload.region,
+    lastUpdated__c: payload.lastUpdated
+}
+]]]></ee:set-payload>
+								</ee:message>
+							</ee:transform>
+							<salesforce:upsert doc:name="Upsert" doc:id="472c0dea-e6fa-48a3-a464-2ef496882045" config-ref="Salesforce_Config" objectType="inventory__c" externalIdFieldName="itemId__c"/>
+							<jms:publish doc:name="Publish" doc:id="d889ca62-9e7f-42b7-bb29-d3c102a7a9ef" config-ref="JMS_Config" destination="procurement.alert.queue">
+								<jms:message >
+									<jms:body ><![CDATA[#[vars.finalData]]]></jms:body>
+								</jms:message>
+							</jms:publish>
+						</when>
+						<when expression="#[payload.totalInventory &gt; 100]">
+							<ee:transform doc:name="Transform Message" doc:id="8bc5f0a2-fb5e-4ef2-868c-858c22fa57e5">
+								<ee:message>
+									<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+[{
+    itemId__c: payload.itemId,
+    Name: payload.itemName,
+    warehouseStock__c: payload.warehouseStock,
+    regionalStock__c: payload.regionalStock,
+    totalInventory__c: payload.totalInventory,
+    status__c: payload.status,
+    region__c: payload.region,
+    lastUpdated__c: payload.lastUpdated
+}
+]]]></ee:set-payload>
+								</ee:message>
+							</ee:transform>
+							<salesforce:upsert objectType="inventory__c" externalIdFieldName="itemId__c" doc:name="Upsert" doc:id="3a3ade16-7dde-4dd9-8c6b-be3ef10436be" config-ref="Salesforce_Config"/>
+						</when>
+						<otherwise >
+							<ee:transform doc:name="Transform Message" doc:id="6b65ee2d-e301-430c-b750-93703146a3ed">
+								<ee:message>
+									<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+[{
+    itemId__c: payload.itemId,
+    Name: payload.itemName,
+    warehouseStock__c: payload.warehouseStock,
+    regionalStock__c: payload.regionalStock,
+    totalInventory__c: payload.totalInventory,
+    status__c: payload.status,
+    region__c: payload.region,
+    lastUpdated__c: payload.lastUpdated
+}
+]]]></ee:set-payload>
+								</ee:message>
+							</ee:transform>
+							<salesforce:upsert objectType="inventory__c" externalIdFieldName="itemId__c" doc:name="Upsert" doc:id="6fc776c8-44d0-40e9-824b-f3c5635c4eb8" config-ref="Salesforce_Config"/>
+						</otherwise>
+					</choice>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="ee0b150f-7109-4e35-ad39-035db47342c5" message='#["Batch Job Finished. Total: " ++ payload.totalRecords ++ &#10;", Successful: " ++ payload.successfulRecords ++ &#10;", Failed: " ++ payload.failedRecords]'/>
+				<file:move doc:name="Move" doc:id="9f811dc9-f7f4-4c6f-bfdb-7ff4cc36f709" sourcePath="#[vars.sourcePath]" targetPath="C:\Users\craft\Videos\Processed-Regional-Updates" overwrite="true"/>
+			</batch:on-complete>
+		</batch:job>
+		<!-- [STUDIO:"Transform Message"]<ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+&#45;&#45;-
+{
+  status: "SYNC_STARTED",
+  timestamp: "2026-03-15T08:46:00Z"
+} as Object {encoding: "UTF-8", mediaType: "application/json"}&#93;&#93;></ee:set-payload>
+            </ee:message>
+        </ee:transform> [STUDIO] -->
+		<error-handler ref="global-error-handlerError_Handler" />
+    </flow>
+	<flow name="global-omni-channel-syncFlow" doc:id="9eccccf6-1feb-44f2-9191-bef6709f21b5" >
+		<scheduler doc:name="Scheduler" doc:id="922082e1-c094-4724-bfa4-6681b6cbeb46" >
+			<scheduling-strategy >
+				<fixed-frequency />
+			</scheduling-strategy>
+		</scheduler>
+		<db:select doc:name="Select" doc:id="45e2da15-f8ec-4b96-842d-f6f7e555682e" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT 1 as OK;]]></db:sql>
+		</db:select>
+		<os:store doc:name="Store" doc:id="833617ab-5647-4fd4-98b8-c0f838aa49b7" key="healthStatus">
+			<os:value ><![CDATA[#[{
+  Database: "UP",
+  CheckedAt: now() as String {format:'yyyy-MM-dd-hh-mm-ss'}
+}]]]></os:value>
+		</os:store>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="489b6b22-be1b-45e4-8f0f-579d1e46f084" type="DB:CONNECTIVITY">
+				<os:store doc:name="Store" doc:id="53961dba-e573-4b15-b0ed-c0cf4cad749f" key="healthStatus">
+					<os:value ><![CDATA[#[{
+  Database: "DOWN",
+  CheckedAt: now() as String {format:'yyyy-MM-dd-hh-mm-ss'},
+  Error: "Database connectivity failure"
+}]]]></os:value>
+				</os:store>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+</mule>

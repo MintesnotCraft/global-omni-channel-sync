@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	<error-handler name="global-error-handlerError_Handler" doc:id="1bed2a22-b58c-44a4-9fd1-e21cd77fb855" >
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="043bd92c-1363-424d-ad77-903e0081890f" type="SALESFORCE:CONNECTIVITY">
+			<logger level="INFO" doc:name="Logger" doc:id="5a7a4d32-9481-4937-b58d-35ed661b7d0c" message="#[{&#10;      Incident: &quot;SALESFORCE_OUTAGE&quot;,&#10;      System: &quot;salesforce&quot;,&#10;      errorType: (error.errorType as String),&#10;      description: (error.description default &quot;&quot;),&#10;      correlationId: correlationId,&#10;      TimeStamp: now()  as String {format:'yyyy-MM-dd-hh-mm-ss'}&#10;    }]"/>
+		</on-error-propagate>
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="5cd8c090-946a-4228-9a6b-8e581587c31d" type="DB:CONNECTIVITY">
+			<logger level="INFO" doc:name="Logger" doc:id="01ae49c1-a3e7-4ed9-b424-7fb17cc587ca" message="#[{&#10;      Incident: &quot;MYSQL SERVER FAILURE&quot;,&#10;      System: &quot;MySQL Database Server&quot;,&#10;      errorType: (error.errorType as String),&#10;      description: (error.description default &quot;&quot;),&#10;      correlationId: correlationId,&#10;      TimeStamp: now()  as String {format:'yyyy-MM-dd-hh-mm-ss'}&#10;    }]"/>
+		</on-error-propagate>
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="66321d24-f500-437e-96d4-2125926d69b0" type="JMS:CONNECTIVITY">
+			<logger level="INFO" doc:name="Logger" doc:id="bc05df53-81f0-4885-ad0b-a4321077fc2a" message="#[{&#10;      Incident: &quot;ACTIVE MQ JMS SERVER FAILURE&quot;,&#10;      System: &quot;Active MQ&quot;,&#10;      errorType: (error.errorType as String),&#10;      description: (error.description default &quot;&quot;),&#10;      correlationId: correlationId,&#10;      TimeStamp: now()  as String {format:'yyyy-MM-dd-hh-mm-ss'}&#10;    }]"/>
+		</on-error-propagate>
+	</error-handler>
+</mule>
