@@ -176,9 +176,9 @@ output application/json
             </ee:variables>
         </ee:transform>
         <salesforce:query doc:name="Query" doc:id="e925aa05-9b78-41fa-b07f-31717649d692" config-ref="Salesforce_Config" escapeSpecialCharactersForParametersValue="true">
-			<salesforce:salesforce-query ><![CDATA[SELECT itemId__c,lastUpdated__c,Name,regionalStock__c,region__c,status__c,totalInventory__c,warehouseStock__c FROM inventory__c where itemId__c = :itemId]]></salesforce:salesforce-query>
+			<salesforce:salesforce-query ><![CDATA[SELECT itemId__c,lastUpdated__c,Name,regionalStock__c,region__c,status__c,totalInventory__c,warehouseStock__c FROM inventory__c where itemId__c = ':itemId']]></salesforce:salesforce-query>
 			<salesforce:parameters ><![CDATA[#[{
-  "itemId": vars.itemId
+  "itemId": (vars.itemId as String)
 }]]]></salesforce:parameters>
 		</salesforce:query>
 		<ee:transform doc:name="Transform Message">
